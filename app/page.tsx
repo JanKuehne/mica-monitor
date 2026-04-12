@@ -17,7 +17,6 @@ function getSupabase() {
 interface SearchParams {
   q?: string;
   country?: string;
-  status?: string;
   segment?: string;
   passporting?: string;
   services?: string;
@@ -48,10 +47,6 @@ async function getCompanies(params: SearchParams) {
 
   if (params.country && params.country !== "all") {
     query = query.eq("home_member_state", params.country);
-  }
-
-  if (params.status && params.status !== "all") {
-    query = query.eq("status", params.status);
   }
 
   if (params.segment && params.segment !== "all") {

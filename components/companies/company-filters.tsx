@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { COUNTRY_NAMES } from "@/lib/countries";
-import { SERVICE_NAMES, COMPANY_STATUSES, type ServiceCode } from "@/lib/supabase";
+import { SERVICE_NAMES, type ServiceCode } from "@/lib/supabase";
 import { X, Search } from "lucide-react";
 
 const SERVICE_CODES = Object.keys(SERVICE_NAMES) as ServiceCode[];
@@ -76,10 +76,9 @@ export default function CompanyFilters() {
   const q = searchParams.get("q") || "";
   const country = searchParams.get("country") || "all";
   const segment = searchParams.get("segment") || "all";
-  const status = searchParams.get("status") || "all";
   const passporting = searchParams.get("passporting") || "all";
   const selectedServices = searchParams.get("services")?.split(",").filter(Boolean) || [];
-  const hasFilters = q || country !== "all" || segment !== "all" || status !== "all" || passporting !== "all" || selectedServices.length > 0;
+  const hasFilters = q || country !== "all" || segment !== "all" || passporting !== "all" || selectedServices.length > 0;
 
   return (
     <div className="space-y-3">
@@ -112,24 +111,6 @@ export default function CompanyFilters() {
                   {name}
                 </SelectItem>
               ))}
-          </SelectContent>
-        </Select>
-
-        {/* Status */}
-        <Select
-          value={status !== "all" ? status : null}
-          onValueChange={(v) => updateParam("status", v ?? "all")}
-        >
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {COMPANY_STATUSES.map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">
-                {s}
-              </SelectItem>
-            ))}
           </SelectContent>
         </Select>
 

@@ -64,6 +64,16 @@ export default function NavShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        {/* Imprint */}
+        <div className="px-3 py-3 border-t">
+          <Link
+            href="/imprint"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Imprint
+          </Link>
+        </div>
       </aside>
 
       <main className="flex-1 min-w-0 overflow-y-auto p-6">

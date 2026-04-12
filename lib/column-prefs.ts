@@ -29,8 +29,7 @@ export const ALL_COLUMN_DEFS: ColumnDef[] = [
   { id: "services",    label: "Services",     defaultWidth: 200, defaultVisible: true,  resizable: true },
   { id: "svc_count",   label: "Svc #",        defaultWidth: 60,  defaultVisible: true,  resizable: false },
   { id: "segment",     label: "Segment",      defaultWidth: 140, defaultVisible: true,  resizable: true },
-  { id: "status",      label: "Status",       defaultWidth: 110, defaultVisible: true,  resizable: false },
-  { id: "passporting", label: "Passporting",  defaultWidth: 130, defaultVisible: true,  resizable: true },
+{ id: "passporting", label: "Passporting",  defaultWidth: 130, defaultVisible: true,  resizable: true },
   { id: "auth_date",   label: "Auth. Date",   defaultWidth: 110, defaultVisible: false, resizable: true },
   { id: "website",     label: "Website",      defaultWidth: 48,  defaultVisible: true,  resizable: false },
 ];

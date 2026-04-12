@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase, type Company, type CompanyStatus, COMPANY_STATUSES } from "@/lib/supabase";
+import { supabase, type Company } from "@/lib/supabase";
 import { ServiceBadgeList } from "./service-badge";
 import type { ServiceCode } from "@/lib/supabase";
 import { countryFlag, countryName } from "@/lib/countries";
@@ -19,13 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Download, ChevronDown, ExternalLink, Info, Columns3 } from "lucide-react";
+import { Download, ExternalLink, Info, Columns3 } from "lucide-react";
 import { SERVICE_FULL_NAMES } from "@/lib/supabase";
 import type { ServiceCode as SC } from "@/lib/supabase";
 import {
@@ -54,14 +48,6 @@ interface CompanyTableProps {
   page: number;
   pageSize: number;
 }
-
-const STATUS_COLORS: Record<CompanyStatus, string> = {
-  new:       "bg-primary/10 text-primary",
-  prospect:  "bg-muted text-muted-foreground border border-border",
-  qualified: "bg-primary/20 text-primary",
-  client:    "bg-primary text-primary-foreground",
-  pass:      "bg-muted/50 text-muted-foreground",
-};
 
 export default function CompanyTable({ companies, total, page, pageSize }: CompanyTableProps) {
   const router = useRouter();
@@ -168,17 +154,6 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
     setSelected(next);
   }
 
-  async function handleStatusChange(companyId: string, status: CompanyStatus) {
-    await supabase.from("companies").update({ status }).eq("id", companyId);
-    startTransition(() => router.refresh());
-  }
-
-  async function handleBulkStatusChange(status: CompanyStatus) {
-    await supabase.from("companies").update({ status }).in("id", Array.from(selected));
-    setSelected(new Set());
-    startTransition(() => router.refresh());
-  }
-
   function handleExport() {
     const csv  = exportToD365Csv(companies.filter((c) => selected.has(c.id)));
     const date = new Date().toISOString().split("T")[0];
@@ -259,29 +234,6 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
             {company.segment
               ? <span className="text-sm">{company.segment}</span>
               : <span className="text-muted-foreground text-sm">—</span>}
-          </TableCell>
-        );
-
-      case "status":
-        return (
-          <TableCell key="status" className={cellPy} onClick={(e) => e.stopPropagation()}>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                  STATUS_COLORS[company.status as CompanyStatus] || "bg-muted text-muted-foreground"
-                }`}
-              >
-                {company.status}
-                <ChevronDown className="h-3 w-3 opacity-60" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {COMPANY_STATUSES.map((s) => (
-                  <DropdownMenuItem key={s} className="capitalize" onClick={() => handleStatusChange(company.id, s)}>
-                    {s}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
           </TableCell>
         );
 
@@ -373,18 +325,6 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
               <Download className="h-3.5 w-3.5" />
               Export CSV
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md bg-background hover:bg-muted transition-colors">
-                Set status <ChevronDown className="h-3 w-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {COMPANY_STATUSES.map((s) => (
-                  <DropdownMenuItem key={s} className="capitalize" onClick={() => handleBulkStatusChange(s)}>
-                    {s}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
               Deselect all
             </Button>
