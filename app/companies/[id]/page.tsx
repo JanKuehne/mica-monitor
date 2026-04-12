@@ -99,7 +99,12 @@ export default async function CompanyDetailPage({
 
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-4">
+          {company.logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={company.logo_url} alt={displayName}
+              className="h-12 w-12 rounded-lg object-contain bg-white border border-muted shrink-0 mt-0.5" />
+          )}
           <div className="flex-1">
             <h1 className="text-2xl font-semibold">{displayName}</h1>
             {company.commercial_name && company.commercial_name !== company.company_name && (

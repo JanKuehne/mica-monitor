@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef, useCallback } from "react";
+// useTransition kept for pagination navigation
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,9 +9,6 @@ import { supabase, type Company } from "@/lib/supabase";
 import { ServiceBadgeList } from "./service-badge";
 import type { ServiceCode } from "@/lib/supabase";
 import { countryFlag, countryName } from "@/lib/countries";
-import { exportToD365Csv, downloadCsv } from "@/lib/export/d365-export";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -19,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, ExternalLink, Info, Columns3 } from "lucide-react";
+import { ExternalLink, Info, Columns3 } from "lucide-react";
 import { SERVICE_FULL_NAMES } from "@/lib/supabase";
 import type { ServiceCode as SC } from "@/lib/supabase";
 import {
@@ -51,7 +49,6 @@ interface CompanyTableProps {
 
 export default function CompanyTable({ companies, total, page, pageSize }: CompanyTableProps) {
   const router = useRouter();
-  const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set());
   const [, startTransition]            = useTransition();
   const [showManager, setShowManager] = useState(false);
@@ -141,26 +138,8 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
     });
   }
 
-  const visibleCols  = columns.filter((c) => c.visible);
-  const allSelected  = companies.length > 0 && companies.every((c) => selected.has(c.id));
-  const someSelected = selected.size > 0;
-
-  function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(companies.map((c) => c.id)));
-  }
-  function toggle(id: string) {
-    const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setSelected(next);
-  }
-
-  function handleExport() {
-    const csv  = exportToD365Csv(companies.filter((c) => selected.has(c.id)));
-    const date = new Date().toISOString().split("T")[0];
-    downloadCsv(csv, `mica-companies-${date}.csv`);
-  }
-
-  const totalPages = Math.ceil(total / pageSize);
+  const visibleCols = columns.filter((c) => c.visible);
+  const totalPages  = Math.ceil(total / pageSize);
 
   // Row padding based on density
   const cellPy = density === "compact" ? "py-1" : "py-2.5";
@@ -180,10 +159,24 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
       case "company":
         return (
           <TableCell key="company" className={`${cellPy} min-w-0`}>
-            <span className="font-medium leading-tight">{displayName}</span>
-            {company.commercial_name && company.commercial_name !== company.company_name && (
-              <div className="text-xs text-muted-foreground truncate">{company.company_name}</div>
-            )}
+            <div className="flex items-center gap-2 min-w-0">
+              {company.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={company.logo_url} alt=""
+                  className="h-6 w-6 rounded object-contain shrink-0 bg-white border border-muted"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              ) : (
+                <div className="h-6 w-6 rounded bg-muted shrink-0 flex items-center justify-center text-[9px] font-bold text-muted-foreground">
+                  {displayName.slice(0,2).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <span className="font-medium leading-tight">{displayName}</span>
+                {company.commercial_name && company.commercial_name !== company.company_name && (
+                  <div className="text-xs text-muted-foreground truncate">{company.company_name}</div>
+                )}
+              </div>
+            </div>
             {company.description && (
               <div
                 onClick={(e) => toggleDesc(e, company.id)}
@@ -316,20 +309,8 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
         </div>
       )}
 
-      {/* Toolbar: bulk actions + columns button */}
+      {/* Toolbar: columns button */}
       <div className="flex items-center gap-2">
-        {someSelected && (
-          <>
-            <span className="text-sm font-medium">{selected.size} selected</span>
-            <Button size="sm" variant="outline" onClick={handleExport} className="gap-1.5">
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-              Deselect all
-            </Button>
-          </>
-        )}
         <div className="ml-auto flex items-center gap-1">
           {/* Density quick-toggle */}
           {hydrated && (
@@ -368,20 +349,13 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
         >
           {/* Column widths */}
           <colgroup>
-            {[
-              <col key="__checkbox" style={{ width: 40 }} />,
-              ...visibleCols.map((col) => (
-                <col key={col.id} style={{ width: col.width }} />
-              )),
-            ]}
+            {visibleCols.map((col) => (
+              <col key={col.id} style={{ width: col.width }} />
+            ))}
           </colgroup>
 
           <thead>
             <tr className="border-b bg-muted/30">
-              {/* Checkbox */}
-              <th className="w-10 px-3 py-2">
-                <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-              </th>
 
               {visibleCols.map((col) => {
                 const def = ALL_COLUMN_DEFS.find((d) => d.id === col.id)!;
@@ -431,7 +405,7 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
           <tbody className="divide-y">
             {companies.length === 0 && (
               <tr>
-                <td colSpan={visibleCols.length + 1} className="text-center py-12 text-muted-foreground">
+                <td colSpan={visibleCols.length} className="text-center py-12 text-muted-foreground">
                   No companies match your filters.
                 </td>
               </tr>
@@ -439,17 +413,9 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
             {companies.map((company) => (
               <tr
                 key={company.id}
-                className={`cursor-pointer transition-colors hover:bg-muted/20 ${
-                  selected.has(company.id) ? "bg-muted/30" : ""
-                }`}
+                className="cursor-pointer transition-colors hover:bg-muted/20"
                 onClick={() => router.push(`/companies/${company.id}`)}
               >
-                <td className={`${cellPy} px-3`} onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selected.has(company.id)}
-                    onCheckedChange={() => toggle(company.id)}
-                  />
-                </td>
                 {visibleCols.map((col) => renderCell(col.id, company))}
               </tr>
             ))}

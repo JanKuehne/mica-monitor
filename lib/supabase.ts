@@ -60,6 +60,7 @@ export type Company = {
   esma_comments: string | null
   service_count: number
   linkedin_url: string | null
+  logo_url: string | null
   description: string | null
   description_confidence: string | null
   segment: string | null
