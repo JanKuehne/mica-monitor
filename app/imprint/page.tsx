@@ -25,6 +25,13 @@ export default function ImprintPage() {
         </p>
 
         <p>
+          One caveat on freshness: the ESMA register is a downstream aggregator. Local regulators
+          grant licenses first, notify ESMA second, and the CSV updates last — so expect a lag of
+          weeks to months between a license being live and showing up here. If something looks
+          missing, check the NCA register of the relevant country first.
+        </p>
+
+        <p>
           Not affiliated with ESMA or any national regulator. Not a financial service, not
           legal advice, and definitely not investment advice. Just a dashboard. Do your own
           research.
