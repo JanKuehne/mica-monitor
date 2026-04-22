@@ -39,7 +39,7 @@ export default async function CompanyDetailPage({
 
   if (!company) notFound();
 
-  const [{ data: services }, { data: tokenIssuers }, { data: news }] = await Promise.all([
+  const [{ data: services }, { data: tokenIssuers }] = await Promise.all([
     supabase
       .from("company_services")
       .select("service_code, service_name")
@@ -50,20 +50,7 @@ export default async function CompanyDetailPage({
       .select("*")
       .eq("linked_casp_lei", company.lei)
       .order("issuer_name"),
-    supabase
-      .from("company_news")
-      .select("id, headline, snippet, url, source_name, published_at, relevance")
-      .eq("company_id", id)
-      .order("published_at", { ascending: false })
-      .limit(50),
   ]);
-
-  const RELEVANCE_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
-  const sortedNews = (news || []).slice().sort((a, b) => {
-    const rDiff = (RELEVANCE_RANK[a.relevance] ?? 1) - (RELEVANCE_RANK[b.relevance] ?? 1);
-    if (rDiff !== 0) return rDiff;
-    return (b.published_at ?? "").localeCompare(a.published_at ?? "");
-  });
 
   const activeCodes = (services || []).map((s) => s.service_code as ServiceCode);
   const displayName = company.commercial_name || company.company_name;
@@ -156,7 +143,6 @@ export default async function CompanyDetailPage({
       </div>
 
       <CompanyDetailTabs
-        news={sortedNews as any}
         overviewContent={<>
           {/* License grid */}
           <section>
