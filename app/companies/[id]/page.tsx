@@ -144,6 +144,16 @@ export default async function CompanyDetailPage({
 
       <CompanyDetailTabs
         overviewContent={<>
+          {/* Description */}
+          {company.description && (
+            <section>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                About
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">{company.description}</p>
+            </section>
+          )}
+
           {/* License grid */}
           <section>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">

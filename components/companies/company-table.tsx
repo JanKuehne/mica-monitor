@@ -17,7 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ExternalLink, Info, Columns3 } from "lucide-react";
+import { ExternalLink, Info, Columns3, Star, Download, ChevronDown } from "lucide-react";
+import { exportToD365Csv, downloadCsv } from "@/lib/export/d365-export";
 import { SERVICE_FULL_NAMES } from "@/lib/supabase";
 import type { ServiceCode as SC } from "@/lib/supabase";
 import {
@@ -52,6 +53,11 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
   const [expandedDesc, setExpandedDesc] = useState<Set<string>>(new Set());
   const [, startTransition]            = useTransition();
   const [showManager, setShowManager] = useState(false);
+  // Starred companies persist in localStorage — no auth on the public side,
+  // so the user's shortlist lives in their browser. Set is the natural shape;
+  // we serialize to JSON array for storage.
+  const STARRED_KEY = "mica-public.starred-companies";
+  const [starred, setStarred] = useState<Set<string>>(new Set());
 
   // Column prefs — initialise from localStorage after mount
   const [columns, setColumns]       = useState<ColumnState[]>(() => ALL_COLUMN_DEFS.map((d) => ({
@@ -66,8 +72,58 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
     setColumns(loadColumnStates());
     setDensity(loadDensity());
     setSavedViews(loadSavedViews());
+    try {
+      const raw = localStorage.getItem(STARRED_KEY);
+      if (raw) setStarred(new Set(JSON.parse(raw) as string[]));
+    } catch {}
     setHydrated(true);
   }, []);
+
+  function toggleStar(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    setStarred((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem(STARRED_KEY, JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
+  }
+
+  function clearStars() {
+    setStarred(new Set());
+    try { localStorage.setItem(STARRED_KEY, "[]"); } catch {}
+  }
+
+  // Star set is global; the table only holds the current page in memory.
+  // Refetch by id (or all) from Supabase so the CSV always contains the full
+  // set the user picked — not just what's loaded on the current page.
+  const [exporting, setExporting] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  async function handleExport(scope: "starred" | "all") {
+    setExportMenuOpen(false);
+    setExporting(true);
+    try {
+      let q = supabase
+        .from("companies")
+        .select("*, company_services(service_code, service_name)");
+      if (scope === "starred") {
+        const ids = Array.from(starred);
+        if (ids.length === 0) return;
+        q = q.in("id", ids);
+      }
+      const { data, error } = await q;
+      if (error || !data) {
+        alert(`Export failed: ${error?.message || "unknown error"}`);
+        return;
+      }
+      const csv = exportToD365Csv(data as CompanyWithServices[]);
+      const date = new Date().toISOString().split("T")[0];
+      const tag = scope === "starred" ? "starred" : "all";
+      downloadCsv(csv, `mica-companies-${tag}-${date}.csv`);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function handleColumnsChange(cols: ColumnState[]) {
     setColumns(cols);
@@ -160,6 +216,19 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
         return (
           <TableCell key="company" className={`${cellPy} min-w-0`}>
             <div className="flex items-center gap-2 min-w-0">
+              <button
+                onClick={(e) => toggleStar(e, company.id)}
+                title={starred.has(company.id) ? "Unstar" : "Star — adds to your CSV shortlist"}
+                className="shrink-0 group/star -ml-1 p-1 rounded hover:bg-muted/40"
+              >
+                <Star
+                  className={`h-3.5 w-3.5 transition-colors ${
+                    starred.has(company.id)
+                      ? "text-amber-500 fill-amber-500"
+                      : "text-muted-foreground/40 group-hover/star:text-foreground"
+                  }`}
+                />
+              </button>
               {company.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={company.logo_url} alt=""
@@ -311,6 +380,56 @@ export default function CompanyTable({ companies, total, page, pageSize }: Compa
 
       {/* Toolbar: columns button */}
       <div className="flex items-center gap-2">
+        {hydrated && (
+          <div className="relative">
+            <button
+              onClick={() => setExportMenuOpen((v) => !v)}
+              disabled={exporting}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm border rounded-md bg-primary text-primary-foreground border-primary hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {exporting ? "Exporting…" : "Download CSV"}
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {exportMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setExportMenuOpen(false)}
+                />
+                <div className="absolute left-0 mt-1 w-64 z-20 rounded-md border bg-popover shadow-md text-sm overflow-hidden">
+                  <button
+                    onClick={() => handleExport("starred")}
+                    disabled={starred.size === 0}
+                    className="w-full text-left px-3 py-2 hover:bg-muted/60 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-between gap-2"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                      Starred only
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums">{starred.size}</span>
+                  </button>
+                  <button
+                    onClick={() => handleExport("all")}
+                    className="w-full text-left px-3 py-2 hover:bg-muted/60 border-t flex items-center justify-between gap-2"
+                  >
+                    <span>All MiCA companies</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">{total}</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {hydrated && starred.size > 0 && (
+          <button
+            onClick={clearStars}
+            className="text-xs text-muted-foreground hover:text-foreground"
+            title="Clear all stars"
+          >
+            clear stars
+          </button>
+        )}
         <div className="ml-auto flex items-center gap-1">
           {/* Density quick-toggle */}
           {hydrated && (
